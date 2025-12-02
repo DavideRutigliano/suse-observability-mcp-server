@@ -123,6 +123,22 @@ func (c *Client) legacyQuerySpans(req *TraceQueryRequest) (*TraceQueryResponse, 
 	return &response, nil
 }
 
+// ListMetrics fetches all available metrics
+func (c *Client) ListMetrics(start, end time.Time) ([]string, error) {
+	var res struct {
+		Data []string `json:"data"`
+	}
+	err := c.apiRequests("metrics/label/__name__/values").
+		Param("start", toMs(start)).
+		Param("end", toMs(end)).
+		ToJSON(&res).
+		Fetch(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	return res.Data, nil
+}
+
 // QueryMetric is the instant query at a single point in time.
 // The endpoint evaluates an instant query at a single point in time.
 // Query is the promql query and Time the single point.

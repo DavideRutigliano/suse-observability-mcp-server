@@ -24,9 +24,9 @@ func main() {
 	listenAddr := flag.String("http", "", "address for http transport, defaults to stdio")
 	flag.Parse()
 
-	server := mcp.NewServer(&mcp.Implementation{Name: "SUSE Observability MCP server", Version: "v0.0.1"}, nil)
+	mcpServer := mcp.NewServer(&mcp.Implementation{Name: "SUSE Observability MCP server", Version: "v0.0.1"}, nil)
 
-	tools = tools.NewTools(&stackstate.StackState{
+	mcpTools := tools.NewTools(&stackstate.StackState{
 		ApiUrl:       *stsApiURL,
 		ApiKey:       *stsApiKey,
 		ApiToken:     *stsApiToken,
@@ -34,16 +34,37 @@ func main() {
 		LegacyApi:    *stsLegacyApi,
 	})
 
+	mcp.AddTool(mcpServer, &mcp.Tool{
+		Name: "listMetrics",
+		Description: `Fetches available metrics from SUSE Observability.
+		Returns:
+		The JSON representation of available metrics from SUSE Observability`},
+		mcpTools.ListMetrics,
+	)
+	mcp.AddTool(mcpServer, &mcp.Tool{
+		Name: "queryMetric",
+		Description: `Query metrics from SUSE Observability.
+		Returns:
+		The JSON representation of the query result from SUSE Observability`},
+		mcpTools.QueryMetric,
+	)
+	mcp.AddTool(mcpServer, &mcp.Tool{
+		Name: "queryRangeMetric",
+		Description: `Query metrics from SUSE Observability over a range of time.
+		Returns:
+		The JSON representation of the query result from SUSE Observability`},
+		mcpTools.QueryRangeMetric,
+	)
 
 	if *listenAddr == "" {
 		// Run the server on the stdio transport.
-		if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
+		if err := mcpServer.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
 			slog.Error("Server failed", "error", err)
 		}
 	} else {
 		// Create a streamable HTTP handler.
 		handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
-			return server
+			return mcpServer
 		}, nil)
 
 		// Run the server on the HTTP transport.
