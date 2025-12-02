@@ -296,6 +296,34 @@ func (c *Client) executeTopoScript(req scriptRequest) (*TopoQueryResponse, error
 	return &TopoQueryResponse{Success: true, Errors: nil, Data: r.Result}, nil
 }
 
+// GetEvents retrieves a list of events based on topology and time selections
+func (c *Client) GetEvents(req *EventListRequest) (*EventItemsWithTotal, error) {
+	var res EventItemsWithTotal
+	err := c.apiRequests("events").
+		Post().
+		BodyJSON(req).
+		ToJSON(&res).
+		Fetch(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// GetEvent retrieves a specific event by its identifier
+func (c *Client) GetEvent(eventId string, startMs int64, endMs int64) (*TopologyEvent, error) {
+	var res TopologyEvent
+	err := c.apiRequests(fmt.Sprintf("events/%s", eventId)).
+		Param("startTimestampMs", strconv.FormatInt(startMs, 10)).
+		Param("endTimestampMs", strconv.FormatInt(endMs, 10)).
+		ToJSON(&res).
+		Fetch(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
 func (c *Client) apiRequests(endpoint string) *rq.Builder {
 	uri := fmt.Sprintf("%s/api/%s", c.url, endpoint)
 	return request(uri).
@@ -318,4 +346,78 @@ func request(uri string) *rq.Builder {
 		b.Transport(transport)
 	}
 	return b
+}
+
+// GetMonitors lists all available monitors
+func (c *Client) GetMonitors() (*MonitorList, error) {
+	var res MonitorList
+	err := c.apiRequests("monitors").
+		ToJSON(&res).
+		Fetch(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// GetMonitor retrieves a specific monitor by its identifier (ID or URN)
+func (c *Client) GetMonitor(monitorIdOrUrn string) (*Monitor, error) {
+	var res Monitor
+	err := c.apiRequests(fmt.Sprintf("monitors/%s", monitorIdOrUrn)).
+		ToJSON(&res).
+		Fetch(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// GetMonitorsOverview lists all available monitors with their function and runtime data
+func (c *Client) GetMonitorsOverview() (*MonitorOverviewList, error) {
+	var res MonitorOverviewList
+	err := c.apiRequests("monitors/overview").
+		ToJSON(&res).
+		Fetch(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// GetMonitorCheckStates returns the check states that a monitor generated
+func (c *Client) GetMonitorCheckStates(monitorIdOrUrn string, healthState string, limit int, timestamp int64) (*MonitorCheckStates, error) {
+	var res MonitorCheckStates
+	req := c.apiRequests(fmt.Sprintf("monitors/%s/checkStates", monitorIdOrUrn))
+
+	if healthState != "" {
+		req.Param("healthState", healthState)
+	}
+	if limit > 0 {
+		req.Param("limit", strconv.Itoa(limit))
+	}
+	if timestamp > 0 {
+		req.Param("timestamp", strconv.FormatInt(timestamp, 10))
+	}
+
+	err := req.ToJSON(&res).Fetch(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// GetMonitorCheckStatus returns a monitor check status by check state id
+func (c *Client) GetMonitorCheckStatus(id int64, topologyTime int64) (*MonitorCheckStatus, error) {
+	var res MonitorCheckStatus
+	req := c.apiRequests(fmt.Sprintf("monitor/checkStatus/%d", id))
+
+	if topologyTime > 0 {
+		req.Param("topologyTime", strconv.FormatInt(topologyTime, 10))
+	}
+
+	err := req.ToJSON(&res).Fetch(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
 }

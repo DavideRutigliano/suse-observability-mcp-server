@@ -410,3 +410,222 @@ type SpanEvent struct {
 	Name       string     `json:"name"`
 	Attributes Attributes `json:"attributes"`
 }
+
+// Events API Types
+type EventCategory string
+
+const (
+	EventCategoryChanges     EventCategory = "Changes"
+	EventCategoryDeployments EventCategory = "Deployments"
+	EventCategoryAlerts      EventCategory = "Alerts"
+	EventCategoryAnomalies   EventCategory = "Anomalies"
+	EventCategoryActivities  EventCategory = "Activities"
+	EventCategoryOthers      EventCategory = "Others"
+)
+
+type SourceLink struct {
+	Title string `json:"title"`
+	URL   string `json:"url"`
+}
+
+type EventTag struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type DependencyDirection string
+
+const (
+	DependencyDirectionOneWay DependencyDirection = "one-way"
+	DependencyDirectionNone   DependencyDirection = "none"
+	DependencyDirectionBoth   DependencyDirection = "both"
+)
+
+type EventComponent struct {
+	Type        string   `json:"_type"`
+	ID          int64    `json:"id"`
+	TypeName    string   `json:"typeName"`
+	Name        string   `json:"name"`
+	Identifiers []string `json:"identifiers"`
+	IconBase64  string   `json:"iconbase64,omitempty"`
+}
+
+type EventRelation struct {
+	Type                string              `json:"_type"`
+	ID                  int64               `json:"id"`
+	TypeName            string              `json:"typeName"`
+	Name                string              `json:"name"`
+	Identifiers         []string            `json:"identifiers"`
+	Source              EventComponent      `json:"source"`
+	Target              EventComponent      `json:"target"`
+	DependencyDirection DependencyDirection `json:"dependencyDirection"`
+}
+
+type TopologyEvent struct {
+	Identifier         string                 `json:"identifier"`
+	SourceIdentifier   string                 `json:"sourceIdentifier,omitempty"`
+	ElementIdentifiers []string               `json:"elementIdentifiers"`
+	Elements           []interface{}          `json:"elements"` // Can be EventComponent or EventRelation
+	Source             string                 `json:"source"`
+	Category           EventCategory          `json:"category"`
+	Description        string                 `json:"description,omitempty"`
+	Name               string                 `json:"name"`
+	SourceLinks        []SourceLink           `json:"sourceLinks"`
+	Data               map[string]interface{} `json:"data"`
+	EventType          string                 `json:"eventType"`
+	EventTime          int64                  `json:"eventTime"`
+	ProcessedTime      int64                  `json:"processedTime"`
+	Tags               []EventTag             `json:"tags"`
+}
+
+type EventItemsWithTotal struct {
+	Items []TopologyEvent `json:"items"`
+	Total int64           `json:"total"`
+}
+
+type EventCursor struct {
+	LastEventTimestampMs int64  `json:"lastEventTimestampMs"`
+	LastEventID          string `json:"lastEventId"`
+}
+
+type EventListRequest struct {
+	StartTimestampMs           int64           `json:"startTimestampMs"`
+	EndTimestampMs             int64           `json:"endTimestampMs"`
+	TopologyQuery              string          `json:"topologyQuery"`
+	Limit                      int             `json:"limit"`
+	IncludeConnectedComponents bool            `json:"includeConnectedComponents,omitempty"`
+	PlayHeadTimestampMs        int64           `json:"playHeadTimestampMs,omitempty"`
+	EventTypes                 []string        `json:"eventTypes,omitempty"`
+	EventTags                  []string        `json:"eventTags,omitempty"`
+	EventCategories            []EventCategory `json:"eventCategories,omitempty"`
+	EventSources               []string        `json:"eventSources,omitempty"`
+	Cursor                     *EventCursor    `json:"cursor,omitempty"`
+}
+
+// Monitor API Types
+
+type MonitorIdOrUrn string
+type MonitorFunctionIdOrUrn string
+type MonitorId int64
+type MonitorUrn string
+
+type MonitorStatusValue string
+
+const (
+	MonitorStatusEnabled  MonitorStatusValue = "ENABLED"
+	MonitorStatusDisabled MonitorStatusValue = "DISABLED"
+)
+
+type MonitorRuntimeStatusValue string
+
+const (
+	MonitorRuntimeStatusEnabled  MonitorRuntimeStatusValue = "ENABLED"
+	MonitorRuntimeStatusDisabled MonitorRuntimeStatusValue = "DISABLED"
+	MonitorRuntimeStatusError    MonitorRuntimeStatusValue = "ERROR"
+	MonitorRuntimeStatusWarning  MonitorRuntimeStatusValue = "WARNING"
+)
+
+type MonitorList struct {
+	Monitors []Monitor `json:"monitors"`
+}
+
+type MonitorOverviewList struct {
+	Monitors []MonitorOverview `json:"monitors"`
+}
+
+type Monitor struct {
+	Id                  int64                     `json:"id"`
+	Name                string                    `json:"name"`
+	Identifier          string                    `json:"identifier,omitempty"`
+	Description         string                    `json:"description,omitempty"`
+	FunctionId          int64                     `json:"functionId"`
+	Arguments           []map[string]interface{}  `json:"arguments"`
+	RemediationHint     string                    `json:"remediationHint,omitempty"`
+	IntervalSeconds     int                       `json:"intervalSeconds"`
+	Tags                []string                  `json:"tags"`
+	Source              string                    `json:"source"`
+	SourceDetails       string                    `json:"sourceDetails,omitempty"`
+	CanEdit             bool                      `json:"canEdit"`
+	CanClone            bool                      `json:"canClone"`
+	Status              MonitorStatusValue        `json:"status"`
+	RuntimeStatus       MonitorRuntimeStatusValue `json:"runtimeStatus"`
+	Dummy               bool                      `json:"dummy,omitempty"`
+	LastUpdateTimestamp int64                     `json:"lastUpdateTimestamp"`
+}
+
+type MonitorFunction struct {
+	Id                  int64  `json:"id"`
+	Name                string `json:"name"`
+	Identifier          string `json:"identifier,omitempty"`
+	Description         string `json:"description,omitempty"`
+	LastUpdateTimestamp int64  `json:"lastUpdateTimestamp"`
+}
+
+type MonitorOverview struct {
+	Monitor        Monitor               `json:"monitor"`
+	Function       MonitorFunction       `json:"function"`
+	Errors         []MonitorError        `json:"errors,omitempty"`
+	RuntimeMetrics MonitorRuntimeMetrics `json:"runtimeMetrics"`
+}
+
+type MonitorError struct {
+	Error string `json:"error"`
+	Count int    `json:"count"`
+	Level string `json:"level"` // MessageLevel from generic_error_handling
+}
+
+type MonitorRuntimeMetrics struct {
+	GroupCount int `json:"groupCount"`
+}
+
+type MonitorCheckStates struct {
+	States []ViewCheckState `json:"states"`
+}
+
+// ViewCheckState from health_sync_service_api.yaml (simplified for consumption)
+type ViewCheckState struct {
+	CheckStateId          string `json:"checkStateId"`
+	TopologyElementId     int64  `json:"topologyElementId"`
+	TopologyElementIdType string `json:"topologyElementIdType"` // "id" or "identifier"
+	Name                  string `json:"name"`
+	Health                string `json:"health"` // HealthStateValue
+	Message               string `json:"message,omitempty"`
+}
+
+type MonitorCheckStatus struct {
+	Id                   int64                       `json:"id"`
+	CheckStateId         string                      `json:"checkStateId"`
+	Message              string                      `json:"message"`
+	Reason               string                      `json:"reason,omitempty"`
+	Health               string                      `json:"health"`
+	TriggeredTimestamp   int64                       `json:"triggeredTimestamp"`
+	Metrics              []MonitorCheckStatusMetric  `json:"metrics"`
+	Component            MonitorCheckStatusComponent `json:"component"`
+	MonitorId            interface{}                 `json:"monitorId"` // MonitorReferenceId
+	MonitorName          string                      `json:"monitorName"`
+	MonitorDescription   string                      `json:"monitorDescription,omitempty"`
+	TroubleshootingSteps string                      `json:"troubleshootingSteps,omitempty"`
+	TopologyTime         int64                       `json:"topologyTime"`
+}
+
+type MonitorCheckStatusMetric struct {
+	Type        string                    `json:"_type"`
+	Name        string                    `json:"name"`
+	Description string                    `json:"description,omitempty"`
+	Unit        string                    `json:"unit,omitempty"`
+	Queries     []MonitorCheckStatusQuery `json:"queries"`
+}
+
+type MonitorCheckStatusQuery struct {
+	Query                       string `json:"query"`
+	Alias                       string `json:"alias,omitempty"`
+	ComponentIdentifierTemplate string `json:"componentIdentifierTemplate,omitempty"`
+}
+
+type MonitorCheckStatusComponent struct {
+	Id         int64  `json:"id"`
+	Identifier string `json:"identifier"`
+	Name       string `json:"name"`
+	Type       string `json:"type"`
+	IconBase64 string `json:"iconbase64,omitempty"`
+}

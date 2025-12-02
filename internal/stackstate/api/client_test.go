@@ -179,12 +179,351 @@ func TestTopologyStreamQuery(t *testing.T) {
 	fmt.Println(toJson(res))
 }
 
+func TestGetEvents(t *testing.T) {
+	client, server := getClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/events", r.URL.Path)
+		assert.Equal(t, "POST", r.Method)
+		var eventReq EventListRequest
+		err := json.NewDecoder(r.Body).Decode(&eventReq)
+		require.NoError(t, err)
+		assert.Equal(t, "type = 'pod'", eventReq.TopologyQuery)
+		assert.Equal(t, 100, eventReq.Limit)
+
+		// Return mock response
+		resp := EventItemsWithTotal{
+			Items: []TopologyEvent{
+				{
+					Identifier:         "event-1",
+					Name:               "Test Event",
+					Category:           EventCategoryAlerts,
+					EventType:          "test.event",
+					EventTime:          time.Now().UnixMilli(),
+					ProcessedTime:      time.Now().UnixMilli(),
+					Source:             "test-source",
+					ElementIdentifiers: []string{"elem-1"},
+					Elements:           []interface{}{},
+					SourceLinks:        []SourceLink{},
+					Tags:               []EventTag{},
+					Data:               map[string]interface{}{},
+				},
+			},
+			Total: 1,
+		}
+		json.NewEncoder(w).Encode(resp)
+	})
+	defer server.Close()
+
+	now := time.Now()
+	req := &EventListRequest{
+		StartTimestampMs: now.Add(-1 * time.Hour).UnixMilli(),
+		EndTimestampMs:   now.UnixMilli(),
+		TopologyQuery:    "type = 'pod'",
+		Limit:            100,
+	}
+	response, err := client.GetEvents(req)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), response.Total)
+	assert.Equal(t, 1, len(response.Items))
+	assert.Equal(t, "event-1", response.Items[0].Identifier)
+	assert.Equal(t, "Test Event", response.Items[0].Name)
+}
+
+func TestGetEvent(t *testing.T) {
+	client, server := getClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/events/event-123", r.URL.Path)
+		assert.Equal(t, "GET", r.Method)
+		assert.NotEmpty(t, r.URL.Query().Get("startTimestampMs"))
+		assert.NotEmpty(t, r.URL.Query().Get("endTimestampMs"))
+
+		// Return mock response
+		resp := TopologyEvent{
+			Identifier:         "event-123",
+			Name:               "Specific Event",
+			Category:           EventCategoryDeployments,
+			EventType:          "deployment.created",
+			EventTime:          time.Now().UnixMilli(),
+			ProcessedTime:      time.Now().UnixMilli(),
+			Source:             "kubernetes",
+			ElementIdentifiers: []string{"elem-1", "elem-2"},
+			Elements:           []interface{}{},
+			SourceLinks: []SourceLink{
+				{Title: "View in K8s", URL: "https://example.com"},
+			},
+			Tags: []EventTag{
+				{Key: "env", Value: "production"},
+			},
+			Data: map[string]interface{}{
+				"deployment": "my-app",
+			},
+		}
+		json.NewEncoder(w).Encode(resp)
+	})
+	defer server.Close()
+
+	now := time.Now()
+	response, err := client.GetEvent("event-123", now.Add(-1*time.Hour).UnixMilli(), now.UnixMilli())
+	require.NoError(t, err)
+	assert.Equal(t, "event-123", response.Identifier)
+	assert.Equal(t, "Specific Event", response.Name)
+	assert.Equal(t, EventCategoryDeployments, response.Category)
+	assert.Equal(t, 1, len(response.SourceLinks))
+	assert.Equal(t, 1, len(response.Tags))
+	assert.Equal(t, "production", response.Tags[0].Value)
+}
+
 func toJson(a any) string {
 	marshal, err := json.Marshal(a)
 	if err != nil {
 		fmt.Printf("Failed to marshall json. %v", err)
 	}
 	return string(marshal)
+}
+
+func TestGetMonitors(t *testing.T) {
+	client, server := getClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/monitors", r.URL.Path)
+		assert.Equal(t, "GET", r.Method)
+
+		// Return mock response
+		resp := MonitorList{
+			Monitors: []Monitor{
+				{
+					Id:                  1,
+					Name:                "CPU Monitor",
+					Identifier:          "urn:monitor:cpu",
+					Description:         "Monitors CPU usage",
+					FunctionId:          100,
+					Arguments:           []map[string]interface{}{},
+					IntervalSeconds:     60,
+					Tags:                []string{"cpu", "infrastructure"},
+					Source:              "stackstate",
+					CanEdit:             true,
+					CanClone:            true,
+					Status:              MonitorStatusEnabled,
+					RuntimeStatus:       MonitorRuntimeStatusEnabled,
+					LastUpdateTimestamp: time.Now().UnixMilli(),
+				},
+				{
+					Id:                  2,
+					Name:                "Memory Monitor",
+					Identifier:          "urn:monitor:memory",
+					FunctionId:          101,
+					Arguments:           []map[string]interface{}{},
+					IntervalSeconds:     120,
+					Tags:                []string{"memory", "infrastructure"},
+					Source:              "stackstate",
+					CanEdit:             true,
+					CanClone:            true,
+					Status:              MonitorStatusEnabled,
+					RuntimeStatus:       MonitorRuntimeStatusEnabled,
+					LastUpdateTimestamp: time.Now().UnixMilli(),
+				},
+			},
+		}
+		json.NewEncoder(w).Encode(resp)
+	})
+	defer server.Close()
+
+	response, err := client.GetMonitors()
+	require.NoError(t, err)
+	assert.Equal(t, 2, len(response.Monitors))
+	assert.Equal(t, "CPU Monitor", response.Monitors[0].Name)
+	assert.Equal(t, "Memory Monitor", response.Monitors[1].Name)
+}
+
+func TestGetMonitor(t *testing.T) {
+	client, server := getClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/monitors/123", r.URL.Path)
+		assert.Equal(t, "GET", r.Method)
+
+		// Return mock response
+		resp := Monitor{
+			Id:                  123,
+			Name:                "Disk Monitor",
+			Identifier:          "urn:monitor:disk",
+			Description:         "Monitors disk usage",
+			FunctionId:          102,
+			Arguments:           []map[string]interface{}{{"threshold": 80}},
+			RemediationHint:     "Check disk space and clean up logs",
+			IntervalSeconds:     300,
+			Tags:                []string{"disk", "storage"},
+			Source:              "stackstate",
+			SourceDetails:       "Auto-generated",
+			CanEdit:             true,
+			CanClone:            true,
+			Status:              MonitorStatusEnabled,
+			RuntimeStatus:       MonitorRuntimeStatusEnabled,
+			Dummy:               false,
+			LastUpdateTimestamp: time.Now().UnixMilli(),
+		}
+		json.NewEncoder(w).Encode(resp)
+	})
+	defer server.Close()
+
+	response, err := client.GetMonitor("123")
+	require.NoError(t, err)
+	assert.Equal(t, int64(123), response.Id)
+	assert.Equal(t, "Disk Monitor", response.Name)
+	assert.Equal(t, "urn:monitor:disk", response.Identifier)
+	assert.Equal(t, "Check disk space and clean up logs", response.RemediationHint)
+	assert.Equal(t, 1, len(response.Arguments))
+}
+
+func TestGetMonitorsOverview(t *testing.T) {
+	client, server := getClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/monitors/overview", r.URL.Path)
+		assert.Equal(t, "GET", r.Method)
+
+		// Return mock response
+		resp := MonitorOverviewList{
+			Monitors: []MonitorOverview{
+				{
+					Monitor: Monitor{
+						Id:                  1,
+						Name:                "API Monitor",
+						FunctionId:          200,
+						Arguments:           []map[string]interface{}{},
+						IntervalSeconds:     60,
+						Tags:                []string{"api"},
+						Source:              "stackstate",
+						CanEdit:             true,
+						CanClone:            true,
+						Status:              MonitorStatusEnabled,
+						RuntimeStatus:       MonitorRuntimeStatusEnabled,
+						LastUpdateTimestamp: time.Now().UnixMilli(),
+					},
+					Function: MonitorFunction{
+						Id:                  200,
+						Name:                "Metric Health Check",
+						Identifier:          "urn:function:metric-health",
+						Description:         "Check metric thresholds",
+						LastUpdateTimestamp: time.Now().UnixMilli(),
+					},
+					Errors: []MonitorError{
+						{
+							Error: "Failed to query metrics",
+							Count: 5,
+							Level: "WARNING",
+						},
+					},
+					RuntimeMetrics: MonitorRuntimeMetrics{
+						GroupCount: 3,
+					},
+				},
+			},
+		}
+		json.NewEncoder(w).Encode(resp)
+	})
+	defer server.Close()
+
+	response, err := client.GetMonitorsOverview()
+	require.NoError(t, err)
+	assert.Equal(t, 1, len(response.Monitors))
+	assert.Equal(t, "API Monitor", response.Monitors[0].Monitor.Name)
+	assert.Equal(t, "Metric Health Check", response.Monitors[0].Function.Name)
+	assert.Equal(t, 1, len(response.Monitors[0].Errors))
+	assert.Equal(t, 3, response.Monitors[0].RuntimeMetrics.GroupCount)
+}
+
+func TestGetMonitorCheckStates(t *testing.T) {
+	client, server := getClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/monitors/456/checkStates", r.URL.Path)
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "CRITICAL", r.URL.Query().Get("healthState"))
+		assert.Equal(t, "10", r.URL.Query().Get("limit"))
+
+		// Return mock response
+		resp := MonitorCheckStates{
+			States: []ViewCheckState{
+				{
+					CheckStateId:          "check-1",
+					TopologyElementId:     1001,
+					TopologyElementIdType: "id",
+					Name:                  "pod-xyz CPU check",
+					Health:                "CRITICAL",
+					Message:               "CPU usage above 90%",
+				},
+				{
+					CheckStateId:          "check-2",
+					TopologyElementId:     1002,
+					TopologyElementIdType: "id",
+					Name:                  "pod-abc CPU check",
+					Health:                "CRITICAL",
+					Message:               "CPU usage above 95%",
+				},
+			},
+		}
+		json.NewEncoder(w).Encode(resp)
+	})
+	defer server.Close()
+
+	response, err := client.GetMonitorCheckStates("456", "CRITICAL", 10, 0)
+	require.NoError(t, err)
+	assert.Equal(t, 2, len(response.States))
+	assert.Equal(t, "check-1", response.States[0].CheckStateId)
+	assert.Equal(t, "CRITICAL", response.States[0].Health)
+	assert.Equal(t, "CPU usage above 90%", response.States[0].Message)
+}
+
+func TestGetMonitorCheckStatus(t *testing.T) {
+	client, server := getClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/monitor/checkStatus/789", r.URL.Path)
+		assert.Equal(t, "GET", r.Method)
+		assert.NotEmpty(t, r.URL.Query().Get("topologyTime"))
+
+		// Return mock response
+		now := time.Now().UnixMilli()
+		resp := MonitorCheckStatus{
+			Id:                 789,
+			CheckStateId:       "check-789",
+			Message:            "High CPU usage detected",
+			Reason:             "Threshold exceeded",
+			Health:             "CRITICAL",
+			TriggeredTimestamp: now,
+			Metrics: []MonitorCheckStatusMetric{
+				{
+					Type:        "MetricHealthCheck",
+					Name:        "CPU Usage",
+					Description: "Container CPU usage percentage",
+					Unit:        "percent",
+					Queries: []MonitorCheckStatusQuery{
+						{
+							Query:                       "cpu_usage{pod='xyz'}",
+							Alias:                       "CPU",
+							ComponentIdentifierTemplate: "urn:kubernetes:pod:{{pod}}",
+						},
+					},
+				},
+			},
+			Component: MonitorCheckStatusComponent{
+				Id:         1001,
+				Identifier: "urn:kubernetes:pod:xyz",
+				Name:       "pod-xyz",
+				Type:       "pod",
+				IconBase64: "base64data",
+			},
+			MonitorId:            123,
+			MonitorName:          "Pod CPU Monitor",
+			MonitorDescription:   "Monitors CPU usage for pods",
+			TroubleshootingSteps: "1. Check pod logs\n2. Review resource limits",
+			TopologyTime:         now,
+		}
+		json.NewEncoder(w).Encode(resp)
+	})
+	defer server.Close()
+
+	topologyTime := time.Now().UnixMilli()
+	response, err := client.GetMonitorCheckStatus(789, topologyTime)
+	require.NoError(t, err)
+	assert.Equal(t, int64(789), response.Id)
+	assert.Equal(t, "check-789", response.CheckStateId)
+	assert.Equal(t, "CRITICAL", response.Health)
+	assert.Equal(t, "High CPU usage detected", response.Message)
+	assert.Equal(t, "Pod CPU Monitor", response.MonitorName)
+	assert.Equal(t, 1, len(response.Metrics))
+	assert.Equal(t, "CPU Usage", response.Metrics[0].Name)
+	assert.Equal(t, "pod-xyz", response.Component.Name)
+	assert.Contains(t, response.TroubleshootingSteps, "Check pod logs")
 }
 
 func getConfig(t *testing.T) *sts.StackState {
