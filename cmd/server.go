@@ -55,6 +55,13 @@ func main() {
 		The JSON representation of the query result from SUSE Observability`},
 		mcpTools.QueryRangeMetric,
 	)
+	mcp.AddTool(mcpServer, &mcp.Tool{
+		Name: "queryTopology",
+		Description: `Query topology from SUSE Observability.
+		Returns:
+		The JSON representation of the topology query result from SUSE Observability`},
+		mcpTools.QueryTopology,
+	)
 
 	if *listenAddr == "" {
 		// Run the server on the stdio transport.
