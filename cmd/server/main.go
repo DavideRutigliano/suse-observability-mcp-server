@@ -8,31 +8,28 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/drutigliano19/suse-observability-mcp/internal/stackstate"
-	"github.com/drutigliano19/suse-observability-mcp/internal/tools"
+	"suse-observability-mcp/client/suseobservability"
+	"suse-observability-mcp/internal/tools"
 )
 
 func main() {
-	// Stackstate flags
-	stsApiURL := flag.String("url", "", "SUSE Observability API URL")
-	stsApiKey := flag.String("key", "", "SUSE Observability API Key")
-	stsApiToken := flag.String("token", "", "SUSE Observability API Token")
-	stsApiTokenType := flag.String("tokentype", "", "SUSE Observability API Token type")
-	stsLegacyApi := flag.Bool("legacy", false, "")
+	// SUSE Observability flags
+	url := flag.String("url", "", "SUSE Observability API URL")
+	token := flag.String("token", "", "SUSE Observability API Token")
+	useAPIToken := flag.Bool("apitoken", false, "Indicates if the token is an API token, instead of a service token")
 
 	// MCP server flags
 	listenAddr := flag.String("http", "", "address for http transport, defaults to stdio")
 	flag.Parse()
 
-	mcpServer := mcp.NewServer(&mcp.Implementation{Name: "SUSE Observability MCP server", Version: "v0.0.1"}, nil)
+	client, err := suseobservability.NewClient(*url, *token, *useAPIToken)
+	if err != nil {
+		return
+	}
 
-	mcpTools := tools.NewTools(&stackstate.StackState{
-		ApiUrl:       *stsApiURL,
-		ApiKey:       *stsApiKey,
-		ApiToken:     *stsApiToken,
-		ApiTokenType: *stsApiTokenType,
-		LegacyApi:    *stsLegacyApi,
-	})
+	mcpTools := tools.NewBaseTool(client)
+
+	mcpServer := mcp.NewServer(&mcp.Implementation{Name: "SUSE Observability MCP server", Version: "v0.0.1"}, nil)
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
 		Name: "listMetrics",

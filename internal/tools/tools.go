@@ -1,22 +1,16 @@
 package tools
 
 import (
-	"github.com/drutigliano19/suse-observability-mcp/internal/stackstate"
-	"github.com/drutigliano19/suse-observability-mcp/internal/stackstate/api"
+	"suse-observability-mcp/client/suseobservability"
 )
 
-// Tools contains all tools for the MCP server
-type Tools struct {
-	client api.Client
+type tool struct {
+	client *suseobservability.Client
 }
 
-// NewTools creates and returns a new Tools instance.
-func NewTools(conf *stackstate.StackState) *Tools {
-	stsClient, err := api.NewClient(conf)
-	if err != nil {
-		return nil
-	}
-	return &Tools{
-		client: *stsClient,
-	}
+// NewFactory returns a tool factory
+func NewBaseTool(c *suseobservability.Client) (t *tool) {
+	t = new(tool)
+	t.client = c
+	return
 }

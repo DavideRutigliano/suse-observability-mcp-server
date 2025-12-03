@@ -14,8 +14,8 @@ type QueryTopologyParams struct {
 }
 
 // QueryTopology queries the StackState topology
-func (t *Tools) QueryTopology(ctx context.Context, request *mcp.CallToolRequest, params QueryTopologyParams) (*mcp.CallToolResult, any, error) {
-	res, err := t.client.TopologyQuery(params.Query, params.Time, false)
+func (t tool) QueryTopology(ctx context.Context, request *mcp.CallToolRequest, params QueryTopologyParams) (*mcp.CallToolResult, any, error) {
+	res, err := t.client.TopologyQuery(ctx, params.Query, params.Time, false)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to query topology: %w", err)
 	}

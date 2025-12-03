@@ -29,7 +29,7 @@ The server currently exposes the following tools for AI agents:
 ### Build
 To build the server, run:
 ```bash
-go build -o suse-observability-mcp-server cmd/server.go
+go build -o suse-observability-mcp-server cmd/server/main.go
 ```
 
 ### Run
@@ -40,7 +40,7 @@ To run the server, you need to provide the SUSE Observability API details. You c
 ./suse-observability-mcp-server \
   -url "https://your-instance.suse.observability.com" \
   -token "YOUR_API_TOKEN" \
-  -tokentype "api"
+  -apitoken
 ```
 
 **Using HTTP:**
@@ -54,10 +54,8 @@ To run the server, you need to provide the SUSE Observability API details. You c
 
 ### Configuration Flags
 -   `-url`: SUSE Observability API URL
--   `-key`: SUSE Observability API Key (optional)
 -   `-token`: SUSE Observability API Token
--   `-tokentype`: SUSE Observability API Token type (default: "api")
--   `-legacy`: Use legacy API (boolean)
+-   `-apitoken`: Use SUSE Observability API Token instead of a Service Token (boolean)
 -   `-http`: Address for HTTP transport (e.g., ":8080"). If empty, defaults to stdio.
 
 ## Resources

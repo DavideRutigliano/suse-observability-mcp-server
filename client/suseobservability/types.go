@@ -1,4 +1,4 @@
-package api
+package suseobservability
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// StackState Server Api DTOs
+// SUSE Observability API DTOs
 
 type ServerInfo struct {
 	Version struct {

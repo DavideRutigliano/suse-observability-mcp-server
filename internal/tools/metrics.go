@@ -23,10 +23,10 @@ type QueryRangeMetricParams struct {
 }
 
 // ListMetrics lists all available metrics
-func (t *Tools) ListMetrics(ctx context.Context, request *mcp.CallToolRequest, params ListMetricsParams) (*mcp.CallToolResult, any, error) {
+func (t tool) ListMetrics(ctx context.Context, request *mcp.CallToolRequest, params ListMetricsParams) (*mcp.CallToolResult, any, error) {
 	end := time.Now()
 	start := end.Add(-1 * time.Hour)
-	metrics, err := t.client.ListMetrics(start, end)
+	metrics, err := t.client.ListMetrics(ctx, start, end)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list metrics: %w", err)
 	}
@@ -46,12 +46,12 @@ func (t *Tools) ListMetrics(ctx context.Context, request *mcp.CallToolRequest, p
 }
 
 // QueryMetric queries a single metric
-func (t *Tools) QueryMetric(ctx context.Context, request *mcp.CallToolRequest, params QueryMetricParams) (*mcp.CallToolResult, any, error) {
+func (t tool) QueryMetric(ctx context.Context, request *mcp.CallToolRequest, params QueryMetricParams) (*mcp.CallToolResult, any, error) {
 	// Default to now if time is not provided or invalid
 	at := time.Now()
 	timeout := "30s"
 
-	result, err := t.client.QueryMetric(params.Query, at, timeout)
+	result, err := t.client.QueryMetric(ctx, params.Query, at, timeout)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to query metric: %w", err)
 	}
@@ -71,7 +71,7 @@ func (t *Tools) QueryMetric(ctx context.Context, request *mcp.CallToolRequest, p
 }
 
 // QueryRangeMetric queries a metric over a range of time
-func (t *Tools) QueryRangeMetric(ctx context.Context, request *mcp.CallToolRequest, params QueryRangeMetricParams) (*mcp.CallToolResult, any, error) {
+func (t tool) QueryRangeMetric(ctx context.Context, request *mcp.CallToolRequest, params QueryRangeMetricParams) (*mcp.CallToolResult, any, error) {
 	start, err := parseTime(params.Start)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse start time: %w", err)
@@ -88,7 +88,7 @@ func (t *Tools) QueryRangeMetric(ctx context.Context, request *mcp.CallToolReque
 	}
 	timeout := "30s"
 
-	result, err := t.client.QueryRangeMetric(params.Query, start, end, step, timeout)
+	result, err := t.client.QueryRangeMetric(ctx, params.Query, start, end, step, timeout)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to query range metric: %w", err)
 	}

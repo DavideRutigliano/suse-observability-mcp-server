@@ -1,4 +1,4 @@
-module github.com/drutigliano19/suse-observability-mcp
+module suse-observability-mcp
 
 go 1.24.1
 

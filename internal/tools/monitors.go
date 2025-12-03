@@ -28,8 +28,8 @@ type GetMonitorCheckStatusParams struct {
 type ListMonitorsParams struct{}
 
 // ListMonitors lists all available monitors
-func (t *Tools) ListMonitors(ctx context.Context, request *mcp.CallToolRequest, params ListMonitorsParams) (*mcp.CallToolResult, any, error) {
-	res, err := t.client.GetMonitors()
+func (t tool) ListMonitors(ctx context.Context, request *mcp.CallToolRequest, params ListMonitorsParams) (*mcp.CallToolResult, any, error) {
+	res, err := t.client.GetMonitors(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list monitors: %w", err)
 	}
@@ -49,8 +49,8 @@ func (t *Tools) ListMonitors(ctx context.Context, request *mcp.CallToolRequest, 
 }
 
 // GetMonitorDetails retrieves a specific monitor by its identifier
-func (t *Tools) GetMonitorDetails(ctx context.Context, request *mcp.CallToolRequest, params GetMonitorDetailsParams) (*mcp.CallToolResult, any, error) {
-	res, err := t.client.GetMonitor(params.MonitorIdOrUrn)
+func (t tool) GetMonitorDetails(ctx context.Context, request *mcp.CallToolRequest, params GetMonitorDetailsParams) (*mcp.CallToolResult, any, error) {
+	res, err := t.client.GetMonitor(ctx, params.MonitorIdOrUrn)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get monitor details: %w", err)
 	}
@@ -70,8 +70,8 @@ func (t *Tools) GetMonitorDetails(ctx context.Context, request *mcp.CallToolRequ
 }
 
 // GetMonitorCheckStates returns the check states that a monitor generated
-func (t *Tools) GetMonitorCheckStates(ctx context.Context, request *mcp.CallToolRequest, params GetMonitorCheckStatesParams) (*mcp.CallToolResult, any, error) {
-	res, err := t.client.GetMonitorCheckStates(params.MonitorIdOrUrn, params.HealthState, params.Limit, params.Timestamp)
+func (t *tool) GetMonitorCheckStates(ctx context.Context, request *mcp.CallToolRequest, params GetMonitorCheckStatesParams) (*mcp.CallToolResult, any, error) {
+	res, err := t.client.GetMonitorCheckStates(ctx, params.MonitorIdOrUrn, params.HealthState, params.Limit, params.Timestamp)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get monitor check states: %w", err)
 	}
@@ -91,8 +91,8 @@ func (t *Tools) GetMonitorCheckStates(ctx context.Context, request *mcp.CallTool
 }
 
 // GetMonitorCheckStatus returns a monitor check status by check state id
-func (t *Tools) GetMonitorCheckStatus(ctx context.Context, request *mcp.CallToolRequest, params GetMonitorCheckStatusParams) (*mcp.CallToolResult, any, error) {
-	res, err := t.client.GetMonitorCheckStatus(params.CheckStatusId, params.TopologyTime)
+func (t *tool) GetMonitorCheckStatus(ctx context.Context, request *mcp.CallToolRequest, params GetMonitorCheckStatusParams) (*mcp.CallToolResult, any, error) {
+	res, err := t.client.GetMonitorCheckStatus(ctx, params.CheckStatusId, params.TopologyTime)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get monitor check status: %w", err)
 	}
