@@ -80,6 +80,15 @@ func main() {
 		mcpTools.ListMonitors,
 	)
 
+	mcp.AddTool(mcpServer, &mcp.Tool{
+		Name: "queryTraces",
+		Description: `Get all the tracing data available for a given service, in the previous hours (counted from start time to now).
+		Use this to retrieve tracing data for a service, or to help debug a failing service by inspecting its traces.
+		Returns:
+		The JSON representation of the traces found for in this particular service`},
+		mcpTools.QueryTraces,
+	)
+
 	if *listenAddr == "" {
 		// Run the server on the stdio transport.
 		if err := mcpServer.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
