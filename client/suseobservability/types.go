@@ -575,7 +575,26 @@ type MonitorError struct {
 }
 
 type MonitorRuntimeMetrics struct {
-	GroupCount int `json:"groupCount"`
+	HealthStatesCount          int   `json:"healthStatesCount,omitempty"`
+	UnmappedHealthStatesCount  int   `json:"unmappedHealthStatesCount,omitempty"`
+	UnknownCount               int   `json:"unknownCount,omitempty"`
+	ClearCount                 int   `json:"clearCount,omitempty"`
+	DeviatingCount             int   `json:"deviatingCount,omitempty"`
+	CriticalCount              int   `json:"criticalCount,omitempty"`
+	LastRunTimestamp           int64 `json:"lastRunTimestamp,omitempty"`
+	LastSuccessfulRunTimestamp int64 `json:"lastSuccessfulRunTimestamp,omitempty"`
+	LastFailedRunTimestamp     int64 `json:"lastFailedRunTimestamp,omitempty"`
+	GroupCount                 int   `json:"groupCount,omitempty"`
+}
+
+type MonitorMetrics struct {
+	RuntimeMetrics MonitorRuntimeMetrics `json:"runtimeMetrics"`
+}
+
+type MonitorStatus struct {
+	Monitor  Monitor         `json:"monitor"`
+	Function MonitorFunction `json:"function,omitempty"`
+	Metrics  MonitorMetrics  `json:"metrics"`
 }
 
 type MonitorCheckStates struct {

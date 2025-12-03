@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -42,7 +43,7 @@ func NewClient(soURL, serviceToken string, apiToken bool) (c *Client, err error)
 
 const (
 	GroovyScript   string = "GroovyScript"
-	DefaultTimeout        = "10s"
+	DefaultTimeout string = "10s"
 )
 
 func (c Client) Status(ctx context.Context) (*ServerInfo, error) {
@@ -154,9 +155,47 @@ func (c Client) QueryRangeMetric(ctx context.Context, query string, start time.T
 	return &m, nil
 }
 
-func (c Client) SnapShotTopologyQuery(query string) ([]ViewComponent, error) {
+// GetMetricLabels fetches the unique label keys for a given metric
+func (c Client) GetMetricLabels(ctx context.Context, metricName string, start, end time.Time) ([]string, error) {
+	// Query for series matching the metric name to get all label keys
+	query := fmt.Sprintf("{__name__=\"%s\"}", metricName)
+	var res struct {
+		Data []map[string]string `json:"data"`
+	}
+
+	err := c.apiRequests("metrics/series").
+		Param("match[]", query).
+		Param("start", toMs(start)).
+		Param("end", toMs(end)).
+		ToJSON(&res).
+		Fetch(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract unique label keys from all series
+	labelKeys := make(map[string]bool)
+	for _, series := range res.Data {
+		for key := range series {
+			if key != "__name__" { // Skip the metric name itself
+				labelKeys[key] = true
+			}
+		}
+	}
+
+	// Convert to sorted slice
+	var keys []string
+	for key := range labelKeys {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	return keys, nil
+}
+
+func (c Client) SnapShotTopologyQuery(ctx context.Context, query string) ([]ViewComponent, error) {
 	req := NewViewSnapshotRequest(query)
-	res, err := c.ViewSnapshot(req)
+	res, err := c.ViewSnapshot(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +205,7 @@ func (c Client) SnapShotTopologyQuery(query string) ([]ViewComponent, error) {
 	return res.Components, nil
 }
 
-func (c Client) ViewSnapshot(req *ViewSnapshotRequest) (*ViewSnapshotResponse, error) {
+func (c Client) ViewSnapshot(ctx context.Context, req *ViewSnapshotRequest) (*ViewSnapshotResponse, error) {
 	var res querySnapshotResult
 	var e ErrorResp
 	err := c.apiRequests("snapshot").
@@ -174,9 +213,9 @@ func (c Client) ViewSnapshot(req *ViewSnapshotRequest) (*ViewSnapshotResponse, e
 		BodyJSON(&req).
 		ErrorJSON(&e).
 		ToJSON(&res).
-		Fetch(context.TODO())
+		Fetch(ctx)
 	if err != nil {
-		if e.Errors != nil && len(e.Errors) > 0 {
+		if len(e.Errors) > 0 {
 			return &ViewSnapshotResponse{Success: false, Errors: e.Errors}, nil
 		}
 		return nil, err
