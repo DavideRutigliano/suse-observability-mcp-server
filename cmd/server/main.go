@@ -82,8 +82,8 @@ func main() {
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
 		Name: "queryTraces",
-		Description: `Get all the tracing data available for a given service, in the previous hours (counted from start time to now).
-		Use this to retrieve tracing data for a service, or to help debug a failing service by inspecting its traces.
+		Description: `Get all the tracing data available for a list of services (also associated with a list of namespaces), limited to 100 entries and to 1 previous hour (counted from start time to now).
+		Use this to retrieve tracing data for services, or to help debug a failing service by inspecting its traces.
 		Returns:
 		The JSON representation of the traces found for in this particular service`},
 		mcpTools.QueryTraces,

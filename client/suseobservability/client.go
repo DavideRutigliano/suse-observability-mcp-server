@@ -78,21 +78,17 @@ func (c Client) GetTraceSpan(ctx context.Context, traceId string, spanId string)
 	return &res, nil
 }
 
-func (c Client) QueryTraces(ctx context.Context, req *TraceQueryRequest) (*TraceQueryResponse, error) {
-	var res TraceQueryResponse
-	err := c.apiRequests("traces/query").
+func (c Client) RetrieveTraces(ctx context.Context, req TracesRequest) (res TracesResult, err error) {
+	err = c.apiRequests("traces/query").
 		Post().
-		Param("end", toMs(req.End)).
-		Param("start", toMs(req.Start)).
-		Param("page", strconv.Itoa(req.Page)).
-		Param("pageSize", strconv.Itoa(req.PageSize)).
-		BodyJSON(req.TraceQuery).
+		Param("end", toMs(req.Params.End)).
+		Param("start", toMs(req.Params.Start)).
+		Param("page", strconv.Itoa(req.Params.Page)).
+		Param("pageSize", strconv.Itoa(req.Params.PageSize)).
+		BodyJSON(req.Body).
 		ToJSON(&res).
 		Fetch(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return &res, nil
+	return
 }
 
 func toMs(t time.Time) string {
