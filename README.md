@@ -15,11 +15,41 @@ This MCP Server abstracts the StackState APIs. Its primary function is to serve 
 
 The server currently exposes the following tools for AI agents:
 
--   **`listMetrics`**: Fetches available metrics from SUSE Observability.
--   **`queryMetric`**: Query a single metric from SUSE Observability using a PromQL-like query.
-    -   Arguments: `query` (string)
--   **`queryRangeMetric`**: Query metrics from SUSE Observability over a range of time.
-    -   Arguments: `query` (string), `start` (string, e.g., "now", "1h"), `end` (string, e.g., "now", "1h"), `step` (string, e.g., "1m")
+### Metrics Tools
+
+-   **`listMetrics`**: Searches for metrics in SUSE Observability by pattern and shows their available label keys.
+    -   Arguments: `search_pattern` (string, required): A regex pattern to search for metrics (e.g., 'cpu', 'memory', 'redis.*')
+    -   Returns: A markdown table showing matching metric names and their available label keys (dimensions)
+
+-   **`getMetrics`**: Query metrics from SUSE Observability over a range of time.
+    -   Arguments: 
+        - `query` (string, required): The PromQL query to execute
+        - `start` (string, required): Start time for the query (e.g., 'now', '1h')
+        - `end` (string, required): End time for the query (e.g., 'now', '1h')
+        - `step` (string, optional): Query resolution step width (e.g., '15s', '1m', defaults to '1m')
+    -   Returns: A markdown table with the visual representation of the query result
+
+### Monitors Tools
+
+-   **`getMonitors`**: Lists active monitors filtered by health state with component details.
+    -   Arguments: `state` (string, optional): Filter by state - 'CRITICAL', 'DEVIATING', or 'UNKNOWN' (default: 'CRITICAL')
+    -   Returns: Monitors in the specified state with affected component names and URNs
+
+### Topology Tools
+
+-   **`getComponents`**: Searches for topology components using STQL filters.
+    -   Arguments:
+        - `query` (string, optional): Raw STQL query for advanced filtering (overrides other filters). Example: 'layer = "Containers" AND (healthstate = "CRITICAL" OR healthstate = "DEVIATING")'
+        - `name_pattern` (string, optional): Component name with wildcard support (e.g., 'checkout*', 'redis*')
+        - `type` (string, optional): Component type filter (e.g., 'pod', 'service', 'deployment')
+        - `layer` (string, optional): Layer filter (e.g., 'Containers', 'Services')
+        - `domain` (string, optional): Domain filter (e.g., 'cluster.example.com')
+        - `healthstate` (string, optional): Health state filter (e.g., 'CRITICAL', 'DEVIATING', 'CLEAR')
+        - `with_neighbors` (boolean, optional): Include connected components using withNeighborsOf (simple filters only)
+        - `with_neighbors_levels` (string, optional): Number of levels (1-14) or 'all' (default: 1)
+        - `with_neighbors_direction` (string, optional): 'up', 'down', or 'both' (default: 'both')
+    -   Note: Either 'query' or at least one simple filter must be provided
+    -   Returns: A markdown table of matching components with their IDs and identifiers
 
 ## Build and Run
 
@@ -46,17 +76,17 @@ To run the server, you need to provide the SUSE Observability API details. You c
 **Using HTTP:**
 ```bash
 ./suse-observability-mcp-server \
+  -http ":8080" \
   -url "https://your-instance.suse.observability.com" \
   -token "YOUR_API_TOKEN" \
-  -tokentype "api" \
-  -http ":8080"
+  -apitoken
 ```
 
 ### Configuration Flags
+-   `-http`: Address for HTTP transport (e.g., ":8080"). If empty, defaults to stdio.
 -   `-url`: SUSE Observability API URL
 -   `-token`: SUSE Observability API Token
 -   `-apitoken`: Use SUSE Observability API Token instead of a Service Token (boolean)
--   `-http`: Address for HTTP transport (e.g., ":8080"). If empty, defaults to stdio.
 
 ## Resources
 *   [Honeycomb: End of Observability](https://www.honeycomb.io/blog/its-the-end-of-observability-as-we-know-it-and-i-feel-fine)
