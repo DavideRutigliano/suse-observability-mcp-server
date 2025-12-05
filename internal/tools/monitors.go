@@ -2,115 +2,90 @@ package tools
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"time"
+	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-type GetMonitorDetailsParams struct {
-	MonitorIdOrUrn string `json:"monitorIdOrUrn" jsonschema:"required,The monitor identifier (ID or URN)"`
+type ListMonitorsParams struct {
+	ComponentID int64 `json:"component_id" jsonschema:"required,The ID of the component to list monitors for"`
 }
 
-type GetMonitorCheckStatesParams struct {
-	MonitorIdOrUrn string `json:"monitorIdOrUrn" jsonschema:"required,The monitor identifier (ID or URN)"`
-	HealthState    string `json:"healthState,omitempty" jsonschema:"Filter by health state (e.g., CRITICAL, DEVIATING, CLEAR, UNKNOWN)"`
-	Limit          int    `json:"limit,omitempty" jsonschema:"Maximum number of states to return"`
-	Timestamp      int64  `json:"timestamp,omitempty" jsonschema:"Timestamp for the query in milliseconds"`
-}
-
-type GetMonitorCheckStatusParams struct {
-	CheckStatusId int64 `json:"checkStatusId" jsonschema:"required,The check status ID"`
-	TopologyTime  int64 `json:"topologyTime,omitempty" jsonschema:"Timestamp for topology query in milliseconds"`
-}
-
-type ListMonitorsParams struct{}
-
-// ListMonitors lists all available monitors
+// ListMonitors lists monitors for a specific component using the Component API
 func (t tool) ListMonitors(ctx context.Context, request *mcp.CallToolRequest, params ListMonitorsParams) (*mcp.CallToolResult, any, error) {
-	res, err := t.client.GetMonitors(ctx)
+	// Get component with synced check states
+	res, err := t.client.GetComponent(ctx, params.ComponentID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to list monitors: %w", err)
+		return nil, nil, fmt.Errorf("failed to get component: %w", err)
 	}
 
-	jsonRes, err := json.Marshal(res)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to marshal monitors result: %w", err)
-	}
-
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{
-				Text: string(jsonRes),
+	// Check if component has synced check states
+	if len(res.Node.SyncedCheckStates) == 0 {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: fmt.Sprintf("No monitors found for component '%s' (ID: %d)", res.Node.Name, params.ComponentID),
+				},
 			},
-		},
-	}, nil, nil
-}
-
-// GetMonitorDetails retrieves a specific monitor by its identifier
-func (t tool) GetMonitorDetails(ctx context.Context, request *mcp.CallToolRequest, params GetMonitorDetailsParams) (*mcp.CallToolResult, any, error) {
-	res, err := t.client.GetMonitor(ctx, params.MonitorIdOrUrn)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get monitor details: %w", err)
+		}, nil, nil
 	}
 
-	jsonRes, err := json.Marshal(res)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to marshal monitor result: %w", err)
+	// Build output table
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("Found %d monitor(s) for component '%s' (ID: %d):\n\n", len(res.Node.SyncedCheckStates), res.Node.Name, params.ComponentID))
+	sb.WriteString("| Monitor Name | Health | Query | Remediation Hint |\n")
+	sb.WriteString("|---|---|---|---|\n")
+
+	for _, checkStateData := range res.Node.SyncedCheckStates {
+		// Extract monitor name from check state data
+		name := ""
+		if nameField, ok := checkStateData["name"].(string); ok {
+			name = nameField
+		}
+
+		// Extract health
+		health := ""
+		if healthField, ok := checkStateData["health"].(string); ok {
+			health = healthField
+		}
+
+		// Extract data.displayTimeSeries for queries
+		query := "-"
+		hint := "-"
+		if dataField, ok := checkStateData["data"].(map[string]interface{}); ok {
+			// Extract remediation hint
+			if remediationHint, ok := dataField["remediationHint"].(string); ok {
+				hint = remediationHint
+				if len(hint) > 100 {
+					hint = hint[:97] + "..."
+				}
+			}
+
+			// Extract query from displayTimeSeries
+			if displayTimeSeries, ok := dataField["displayTimeSeries"].([]interface{}); ok && len(displayTimeSeries) > 0 {
+				if series, ok := displayTimeSeries[0].(map[string]interface{}); ok {
+					if queries, ok := series["queries"].([]interface{}); ok && len(queries) > 0 {
+						if queryData, ok := queries[0].(map[string]interface{}); ok {
+							if q, ok := queryData["query"].(string); ok {
+								query = fmt.Sprintf("`%s`", q)
+								if len(query) > 80 {
+									query = query[:77] + "...`"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		sb.WriteString(fmt.Sprintf("| %s | %s | %s | %s |\n", name, health, query, hint))
 	}
 
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{
-				Text: string(jsonRes),
-			},
-		},
-	}, nil, nil
-}
-
-// GetMonitorCheckStates returns the check states that a monitor generated
-func (t *tool) GetMonitorCheckStates(ctx context.Context, request *mcp.CallToolRequest, params GetMonitorCheckStatesParams) (*mcp.CallToolResult, any, error) {
-	res, err := t.client.GetMonitorCheckStates(ctx, params.MonitorIdOrUrn, params.HealthState, params.Limit, params.Timestamp)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get monitor check states: %w", err)
-	}
-
-	jsonRes, err := json.Marshal(res)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to marshal monitor check states result: %w", err)
-	}
-
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{
-				Text: string(jsonRes),
-			},
-		},
-	}, nil, nil
-}
-
-// GetMonitorCheckStatus returns a monitor check status by check state id
-func (t *tool) GetMonitorCheckStatus(ctx context.Context, request *mcp.CallToolRequest, params GetMonitorCheckStatusParams) (*mcp.CallToolResult, any, error) {
-	res, err := t.client.GetMonitorCheckStatus(ctx, params.CheckStatusId, params.TopologyTime)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get monitor check status: %w", err)
-	}
-
-	jsonRes, err := json.Marshal(res)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to marshal monitor check status result: %w", err)
-	}
-
-	// Add helpful context
-	triggeredTime := time.UnixMilli(res.TriggeredTimestamp).Format(time.RFC3339)
-	context := fmt.Sprintf("Check Status for Monitor '%s' (Health: %s)\nTriggered at: %s\nMessage: %s",
-		res.MonitorName, res.Health, triggeredTime, res.Message)
-
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{
-				Text: context + "\n\n" + string(jsonRes),
+				Text: sb.String(),
 			},
 		},
 	}, nil, nil

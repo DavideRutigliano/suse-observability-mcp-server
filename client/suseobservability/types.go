@@ -21,18 +21,19 @@ type ServerInfo struct {
 }
 
 type SyncComponent struct {
-	Id                  int                    `json:"id"`
-	Identifiers         []string               `json:"identifiers"`
-	Labels              []Label                `json:"labels"`
-	Environments        []int                  `json:"environments"`
-	Domain              int                    `json:"domain"`
-	LastUpdateTimestamp int                    `json:"lastUpdateTimestamp"`
-	Layer               int                    `json:"layer"`
-	Name                string                 `json:"name"`
-	Properties          map[string]interface{} `json:"properties"`
-	State               map[string]interface{} `json:"state"`
-	SyncedElems         []SyncElem             `json:"synced"`
-	SyncedData          map[string][]SyncData  `json:"synchronizationData"`
+	Id                  int                      `json:"id"`
+	Identifiers         []string                 `json:"identifiers"`
+	Labels              []Label                  `json:"labels"`
+	Environments        []int                    `json:"environments"`
+	Domain              int                      `json:"domain"`
+	LastUpdateTimestamp int                      `json:"lastUpdateTimestamp"`
+	Layer               int                      `json:"layer"`
+	Name                string                   `json:"name"`
+	Properties          map[string]interface{}   `json:"properties"`
+	State               map[string]interface{}   `json:"state"`
+	SyncedElems         []SyncElem               `json:"synced"`
+	SyncedData          map[string][]SyncData    `json:"synchronizationData"`
+	SyncedCheckStates   []map[string]interface{} `json:"syncedCheckStates,omitempty"`
 
 	Tags []string `json:"tags"`
 }
@@ -575,7 +576,26 @@ type MonitorError struct {
 }
 
 type MonitorRuntimeMetrics struct {
-	GroupCount int `json:"groupCount"`
+	HealthStatesCount          int   `json:"healthStatesCount,omitempty"`
+	UnmappedHealthStatesCount  int   `json:"unmappedHealthStatesCount,omitempty"`
+	UnknownCount               int   `json:"unknownCount,omitempty"`
+	ClearCount                 int   `json:"clearCount,omitempty"`
+	DeviatingCount             int   `json:"deviatingCount,omitempty"`
+	CriticalCount              int   `json:"criticalCount,omitempty"`
+	LastRunTimestamp           int64 `json:"lastRunTimestamp,omitempty"`
+	LastSuccessfulRunTimestamp int64 `json:"lastSuccessfulRunTimestamp,omitempty"`
+	LastFailedRunTimestamp     int64 `json:"lastFailedRunTimestamp,omitempty"`
+	GroupCount                 int   `json:"groupCount,omitempty"`
+}
+
+type MonitorMetrics struct {
+	RuntimeMetrics MonitorRuntimeMetrics `json:"runtimeMetrics"`
+}
+
+type MonitorStatus struct {
+	Monitor  Monitor         `json:"monitor"`
+	Function MonitorFunction `json:"function,omitempty"`
+	Metrics  MonitorMetrics  `json:"metrics"`
 }
 
 type MonitorCheckStates struct {
@@ -628,4 +648,38 @@ type MonitorCheckStatusComponent struct {
 	Name       string `json:"name"`
 	Type       string `json:"type"`
 	IconBase64 string `json:"iconbase64,omitempty"`
+}
+
+type BoundMetricsResponse struct {
+	Type         string        `json:"_type"`
+	BoundMetrics []BoundMetric `json:"boundMetrics"`
+}
+
+type BoundMetric struct {
+	Type         string       `json:"_type"`
+	BoundQueries []BoundQuery `json:"boundQueries"`
+	Name         string       `json:"name"`
+	Unit         string       `json:"unit"`
+}
+
+type BoundQuery struct {
+	Expression string `json:"expression"`
+	Alias      string `json:"alias"`
+}
+
+// ComponentResponse is the wrapper returned by /api/components/{id}
+type ComponentResponse struct {
+	Node         ComponentNode `json:"node"`
+	Type         interface{}   `json:"type"`
+	Layer        interface{}   `json:"layer"`
+	Domain       interface{}   `json:"domain"`
+	Properties   interface{}   `json:"properties"`
+	InternalType string        `json:"_type"`
+}
+
+// ComponentNode contains the actual component data with synced check states
+type ComponentNode struct {
+	ID                int64                    `json:"id"`
+	Name              string                   `json:"name"`
+	SyncedCheckStates []map[string]interface{} `json:"syncedCheckStates"`
 }

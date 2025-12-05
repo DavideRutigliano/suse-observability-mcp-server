@@ -42,7 +42,7 @@ func NewClient(soURL, serviceToken string, apiToken bool) (c *Client, err error)
 
 const (
 	GroovyScript   string = "GroovyScript"
-	DefaultTimeout        = "10s"
+	DefaultTimeout string = "10s"
 )
 
 func (c Client) Status(ctx context.Context) (*ServerInfo, error) {
@@ -154,9 +154,9 @@ func (c Client) QueryRangeMetric(ctx context.Context, query string, start time.T
 	return &m, nil
 }
 
-func (c Client) SnapShotTopologyQuery(query string) ([]ViewComponent, error) {
+func (c Client) SnapShotTopologyQuery(ctx context.Context, query string) ([]ViewComponent, error) {
 	req := NewViewSnapshotRequest(query)
-	res, err := c.ViewSnapshot(req)
+	res, err := c.ViewSnapshot(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +166,7 @@ func (c Client) SnapShotTopologyQuery(query string) ([]ViewComponent, error) {
 	return res.Components, nil
 }
 
-func (c Client) ViewSnapshot(req *ViewSnapshotRequest) (*ViewSnapshotResponse, error) {
+func (c Client) ViewSnapshot(ctx context.Context, req *ViewSnapshotRequest) (*ViewSnapshotResponse, error) {
 	var res querySnapshotResult
 	var e ErrorResp
 	err := c.apiRequests("snapshot").
@@ -174,9 +174,9 @@ func (c Client) ViewSnapshot(req *ViewSnapshotRequest) (*ViewSnapshotResponse, e
 		BodyJSON(&req).
 		ErrorJSON(&e).
 		ToJSON(&res).
-		Fetch(context.TODO())
+		Fetch(ctx)
 	if err != nil {
-		if e.Errors != nil && len(e.Errors) > 0 {
+		if len(e.Errors) > 0 {
 			return &ViewSnapshotResponse{Success: false, Errors: e.Errors}, nil
 		}
 		return nil, err
@@ -388,6 +388,32 @@ func (c Client) GetMonitorCheckStatus(ctx context.Context, id int64, topologyTim
 	}
 
 	err := req.ToJSON(&res).Fetch(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// GetBoundMetricsWithData retrieves bound metrics for a specific component
+func (c Client) GetBoundMetricsWithData(ctx context.Context, componentID int64, start, end time.Time) (*BoundMetricsResponse, error) {
+	var res BoundMetricsResponse
+	err := c.apiRequests(fmt.Sprintf("components/%d/boundMetricsWithData", componentID)).
+		Param("startSeconds", strconv.FormatInt(start.Unix(), 10)).
+		Param("endSeconds", strconv.FormatInt(end.Unix(), 10)).
+		ToJSON(&res).
+		Fetch(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// GetComponent retrieves a component by ID with full details including synced check states
+func (c Client) GetComponent(ctx context.Context, componentID int64) (*ComponentResponse, error) {
+	var res ComponentResponse
+	err := c.apiRequests(fmt.Sprintf("components/%d", componentID)).
+		ToJSON(&res).
+		Fetch(ctx)
 	if err != nil {
 		return nil, err
 	}
