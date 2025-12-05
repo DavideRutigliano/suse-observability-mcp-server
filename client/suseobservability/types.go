@@ -696,7 +696,10 @@ type TracesRequestBody struct {
 	SecondarySpanFilter SecondarySpanFilter `json:"secondarySpanFilter"`
 	SortBy              []any               `json:"sortBy"`
 }
-type ConstrainedAttributes map[string][]string
+type ConstrainedAttributes struct {
+	ServiceName      []string `json:"service.name,omitempty"`
+	ServiceNamespace []string `json:"service.namespace,omitempty"`
+}
 
 type PrimarySpanFilter struct {
 	Attributes ConstrainedAttributes `json:"attributes"`

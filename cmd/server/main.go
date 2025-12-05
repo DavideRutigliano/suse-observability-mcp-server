@@ -81,26 +81,13 @@ func main() {
 	)
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name: "getValuesForAttributeFilters",
-		Description: `Get some suggestions for the values related to an attribute filter.
+		Name: "listTraces",
+		Description: `Get all the tracing data available for component.
+                Arguments:
+                - component_id (required): The ID of the component that you want to capture the tracing data.
 		Returns:
-		The JSON representation of all the possible values for an attribute filter.`},
-		mcpTools.GetValuesForAttributeFilters,
-	)
-	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name: "getAttributeFilters",
-		Description: `Get all attribute filters available for the tracing data.
-		Returns:
-		The JSON representation of all the attributes that can be set for the queryTraces filter.`},
-		mcpTools.GetAttributeFilters,
-	)
-	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name: "queryTraces",
-		Description: `Get all the tracing data available, limited to 100 entries and to 1 previous hour.
-		Use this to retrieve tracing data for services, or to help debug a failing service by inspecting its traces. There are several optional filters available for the tracing data. Remember that most filters are case-sensitive.
-		Returns:
-		The JSON representation of the traces found for the filters applied`},
-		mcpTools.QueryTraces,
+		The JSON representation of the traces found`},
+		mcpTools.ListTraces,
 	)
 
 	if *listenAddr == "" {
