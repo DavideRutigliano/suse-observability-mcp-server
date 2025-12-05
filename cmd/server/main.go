@@ -81,6 +81,13 @@ func main() {
 	)
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
+		Name: "getValuesForAttributeFilters",
+		Description: `Get some suggestions for the values related to an attribute filter.
+		Returns:
+		The JSON representation of all the possible values for an attribute filter.`},
+		mcpTools.GetValuesForAttributeFilters,
+	)
+	mcp.AddTool(mcpServer, &mcp.Tool{
 		Name: "getAttributeFilters",
 		Description: `Get all attribute filters available for the tracing data.
 		Returns:

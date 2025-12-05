@@ -712,3 +712,5 @@ type QueryParams struct {
 }
 
 type AttributeResult map[string]interface{}
+
+type AttributeValuesResult map[string][]string
