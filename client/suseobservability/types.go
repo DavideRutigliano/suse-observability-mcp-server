@@ -713,7 +713,3 @@ type QueryParams struct {
 	Page     int
 	PageSize int
 }
-
-type AttributeResult map[string]interface{}
-
-type AttributeValuesResult map[string][]string
