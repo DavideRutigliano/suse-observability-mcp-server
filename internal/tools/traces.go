@@ -47,7 +47,7 @@ func (t tool) ListTraces(ctx context.Context, request *mcp.CallToolRequest, para
 	}
 
 	now := time.Now()
-	result, err := t.client.RetrieveTraces(ctx, suseobservability.TracesRequest{
+	result, err := t.client.QueryTraces(ctx, suseobservability.TracesRequest{
 		Params: suseobservability.QueryParams{
 			Start:    now.Add(-time.Hour),
 			End:      now,

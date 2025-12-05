@@ -78,23 +78,7 @@ func (c Client) GetTraceSpan(ctx context.Context, traceId string, spanId string)
 	return &res, nil
 }
 
-func (c Client) RetrievePossibleValuesForAttributeFilters(ctx context.Context, attribute string) (res AttributeValuesResult, err error) {
-	err = c.apiRequests(fmt.Sprintf("traces/spans/fields/attributes/%s/values", attribute)).
-		Param("contains", "").
-		ToJSON(&res).
-		Fetch(ctx)
-	return
-}
-
-func (c Client) RetrieveAllAttributeFilters(ctx context.Context) (res AttributeResult, err error) {
-	err = c.apiRequests("traces/spans/fields/attributes").
-		Param("contains", "").
-		ToJSON(&res).
-		Fetch(ctx)
-	return
-
-}
-func (c Client) RetrieveTraces(ctx context.Context, req TracesRequest) (res TracesResult, err error) {
+func (c Client) QueryTraces(ctx context.Context, req TracesRequest) (res TracesResult, err error) {
 	err = c.apiRequests("traces/query").
 		Post().
 		Param("end", toMs(req.Params.End)).
