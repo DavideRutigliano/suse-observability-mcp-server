@@ -17,16 +17,11 @@ import (
 )
 
 type Client struct {
-	soURL    string
-	token    string
-	apiToken bool
+	soURL      string
+	token      string
+	apiToken   bool
+	httpClient *http.Client
 }
-
-var (
-	transport = &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-)
 
 func NewClient(soURL, serviceToken string, apiToken bool) (c *Client, err error) {
 	_, err = url.ParseRequestURI(soURL)
@@ -37,6 +32,11 @@ func NewClient(soURL, serviceToken string, apiToken bool) (c *Client, err error)
 	c.soURL, _ = strings.CutSuffix(soURL, "/")
 	c.token = serviceToken
 	c.apiToken = apiToken
+	c.httpClient = &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
 	return
 }
 
@@ -181,27 +181,27 @@ func (c Client) ViewSnapshot(ctx context.Context, req *ViewSnapshotRequest) (*Vi
 	return &res.ViewSnapshotResponse, nil
 }
 
-func (c Client) Layers() (*map[int64]NodeType, error) {
-	return c.getNodesOfType("Layer")
+func (c Client) Layers(ctx context.Context) (*map[int64]NodeType, error) {
+	return c.getNodesOfType(ctx, "Layer")
 }
 
-func (c Client) ComponentTypes() (*map[int64]NodeType, error) {
-	return c.getNodesOfType("ComponentType")
+func (c Client) ComponentTypes(ctx context.Context) (*map[int64]NodeType, error) {
+	return c.getNodesOfType(ctx, "ComponentType")
 }
 
-func (c Client) RelationTypes() (*map[int64]NodeType, error) {
-	return c.getNodesOfType("RelationType")
+func (c Client) RelationTypes(ctx context.Context) (*map[int64]NodeType, error) {
+	return c.getNodesOfType(ctx, "RelationType")
 }
 
-func (c Client) Domains() (*map[int64]NodeType, error) {
-	return c.getNodesOfType("Domain")
+func (c Client) Domains(ctx context.Context) (*map[int64]NodeType, error) {
+	return c.getNodesOfType(ctx, "Domain")
 }
 
-func (c Client) getNodesOfType(t string) (*map[int64]NodeType, error) {
+func (c Client) getNodesOfType(ctx context.Context, t string) (*map[int64]NodeType, error) {
 	var res []NodeType
 	err := c.apiRequests(fmt.Sprintf("node/%s", t)).
 		ToJSON(&res).
-		Fetch(context.Background())
+		Fetch(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -298,7 +298,9 @@ func (c Client) GetEvent(ctx context.Context, eventId string, startMs int64, end
 
 func (c Client) apiRequests(endpoint string) *rq.Builder {
 	uri := fmt.Sprintf("%s/api/%s", c.soURL, endpoint)
-	return request(uri).
+	return rq.URL(uri).
+		Client(c.httpClient).
+		ContentType("application/json").
 		Header(c.GetXHeader(), c.token)
 }
 
@@ -307,13 +309,6 @@ func (c Client) GetXHeader() string {
 		return "X-API-Token"
 	}
 	return "X-API-Key"
-}
-
-func request(uri string) *rq.Builder {
-	b := rq.URL(uri).
-		ContentType("application/json").
-		Transport(transport)
-	return b
 }
 
 // GetMonitors lists all available monitors
