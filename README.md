@@ -83,6 +83,23 @@ To run the server, you need to provide the SUSE Observability API details. You c
   -apitoken
 ```
 
+### Using docker
+A multi-stage `Dockerfile` is provided to build a minimal container image.
+
+**1. Build the Docker image:**
+```bash
+docker build -t suse-observability-mcp-server .
+```
+**2. Run the container: This example runs the server in HTTP mode. The `-p 8080:8080` flag maps the container's port to your local machine.
+
+```bash
+docker run -p 8080:8080 --rm suse-observability-mcp-server \
+  -url "https://your-instance.suse.observability.com" \
+  -token "YOUR_API_TOKEN" \
+  -apitoken \
+  -http ":8080"
+```
+
 ### Configuration Flags
 -   `-http`: Address for HTTP transport (e.g., ":8080"). If empty, defaults to stdio.
 -   `-url`: SUSE Observability API URL
