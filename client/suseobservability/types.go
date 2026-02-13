@@ -683,3 +683,41 @@ type ComponentNode struct {
 	Name              string                   `json:"name"`
 	SyncedCheckStates []map[string]interface{} `json:"syncedCheckStates"`
 }
+
+type TracesResult struct {
+	Traces []struct {
+		TraceID string `json:"traceId"`
+	} `json:"traces"`
+}
+
+type TracesRequest struct {
+	Params QueryParams
+	Body   TracesRequestBody
+}
+
+type GetTraceRequest struct {
+	TraceID string
+}
+
+type TracesRequestBody struct {
+	PrimarySpanFilter   PrimarySpanFilter   `json:"primarySpanFilter"`
+	SecondarySpanFilter SecondarySpanFilter `json:"secondarySpanFilter"`
+	SortBy              []any               `json:"sortBy"`
+}
+type ConstrainedAttributes struct {
+	ServiceName      []string `json:"service.name,omitempty"`
+	ServiceNamespace []string `json:"service.namespace,omitempty"`
+}
+
+type PrimarySpanFilter struct {
+	Attributes ConstrainedAttributes `json:"attributes"`
+}
+type SecondarySpanFilter struct {
+	Attributes ConstrainedAttributes `json:"attributes"`
+}
+type QueryParams struct {
+	Start    time.Time
+	End      time.Time
+	Page     int
+	PageSize int
+}
